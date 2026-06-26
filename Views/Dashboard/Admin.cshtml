@@ -1,0 +1,413 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var today = DateTime.Now;
+    var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+    if (today.DayOfWeek == DayOfWeek.Sunday) { startOfWeek = today.AddDays(-6); }
+
+    // Approval rate
+    var approvalRate = (Model.PendingRequestsCount + Model.ApprovedThisMonthCount) == 0
+        ? 0
+        : (int)Math.Round(100.0 * Model.ApprovedThisMonthCount / (Model.PendingRequestsCount + Model.ApprovedThisMonthCount));
+
+    // 7-day trend and detailed tooltips
+    var trend = new int[7];
+    var trendDetails = new List<string>[7];
+    for (int i = 0; i < 7; i++) { trendDetails[i] = new List<string>(); }
+
+    foreach (var r in Model.RecentApplications)
+    {
+        var diff = (today.Date - r.AppliedDate.Date).Days;
+        if (diff >= 0 && diff < 7) 
+        { 
+            int idx = 6 - diff;
+            trend[idx]++; 
+            
+            // Format a nice string for the tooltip
+            var statusStr = r.Status == "Approved" ? "✅ Approved" : (r.Status == "Rejected" ? "❌ Rejected" : "⏳ Pending");
+            var cleanName = r.Employee?.FullName?.Replace("'", "\\'") ?? "Unknown";
+            trendDetails[idx].Add($"'{cleanName} ({statusStr})'");
+        }
+    }
+    var trendMax = Math.Max(1, trend.Max());
+
+    var tooltipArrays = new string[7];
+    for (int i = 0; i < 7; i++)
+    {
+        if (trendDetails[i].Any()) {
+            tooltipArrays[i] = "[" + string.Join(",", trendDetails[i]) + "]";
+        } else {
+            tooltipArrays[i] = "['No applications']";
+        }
+    }
+
+    // Leave type breakdown
+    var byType = Model.RecentPendingRequests
+        .Where(r => r.LeaveType != null)
+        .GroupBy(r => r.LeaveType!.Name)
+        .Select(g => new { Name = g.Key, Count = g.Count() })
+        .OrderByDescending(x => x.Count)
+        .Take(5)
+        .ToList();
+    var byTypeMax = byType.Any() ? byType.Max(x => x.Count) : 1;
+}
+
+<!-- Page Header with Key Actions -->
+<div class="page-header-row">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle">System overview & leave management analytics</p>
+    </div>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a asp-controller="Employee" asp-action="Create" class="btn btn-outline-secondary">
+            <i class="fas fa-user-plus"></i> Add Employee
+        </a>
+        <a asp-controller="LeaveRequest" asp-action="Pending" class="btn btn-primary">
+            <i class="fas fa-inbox"></i> Review Pending (@Model.PendingRequestsCount)
+        </a>
+    </div>
+</div>
+
+<!-- ============ PRIMARY METRICS ROW ============ -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--info-soft), #dbeafe); color: var(--info);">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="dashboard-card-content flex-grow-1">
+                <h6>Total Employees</h6>
+                <p>@Model.TotalEmployees</p>
+                <span class="stat-trend flat"><i class="fas fa-arrow-right"></i> Active staff</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--warning-soft), #fed7aa); color: var(--warning);">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="dashboard-card-content flex-grow-1">
+                <h6>Pending Review</h6>
+                <p>@Model.PendingRequestsCount</p>
+                <span class="stat-trend @(Model.PendingRequestsCount > 3 ? "down" : "up")">
+                    <i class="fas @(Model.PendingRequestsCount > 3 ? "fa-bell" : "fa-check")"></i>
+                    @(Model.PendingRequestsCount > 3 ? "Needs action" : "On track")
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--success-soft), #bbf7d0); color: var(--success);">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="dashboard-card-content flex-grow-1">
+                <h6>Approved (Month)</h6>
+                <p>@Model.ApprovedThisMonthCount</p>
+                <span class="stat-trend up"><i class="fas fa-percent"></i> @approvalRate% rate</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--purple-soft), #e9d5ff); color: var(--purple);">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div class="dashboard-card-content flex-grow-1">
+                <h6>Departments</h6>
+                <p>@Model.TotalDepartments</p>
+                <span class="stat-trend flat"><i class="fas fa-building"></i> Org units</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MAIN CONTENT GRID ============ -->
+<div class="row g-3 mb-3">
+    <!-- LEFT: Applications Trend + Timeline -->
+    <div class="col-lg-8">
+        <!-- Applications Trend Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-chart-line"></i> Applications Trend · Last 7 Days</h5>
+                    <a href="#" class="badge bg-primary text-white text-decoration-none" style="padding: 0.5rem 0.8rem; font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#recentAppsModal">
+                        @trend.Sum() total <i class="fas fa-search ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body" style="height: 300px; padding: 1rem;">
+                <canvas id="leaveTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Pending Requests Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list-check"></i> Pending Leave Requests</h5>
+                    <a asp-controller="LeaveRequest" asp-action="Pending" class="btn btn-sm btn-outline-primary">
+                        View All <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body" style="padding:0;">
+                @if (!Model.RecentPendingRequests.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                        <h5>No Pending Requests</h5>
+                        <p>All leave requests are processed. New applications will appear here automatically.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Leave Type</th>
+                                    <th>Duration</th>
+                                    <th>Applied</th>
+                                    <th>Days</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in Model.RecentPendingRequests.OrderByDescending(x => x.AppliedDate))
+                                {
+                                    var daysAgo = (today.Date - r.AppliedDate.Date).Days;
+                                    <tr>
+                                        <td>
+                                            <strong>@r.Employee?.FullName</strong>
+                                            <div style="font-size:.75rem; color:var(--text-muted);">@r.Employee?.Designation</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">@r.LeaveType?.Name</span>
+                                        </td>
+                                        <td style="font-size:.88rem;">
+                                            @r.StartDate.ToString("MMM d") — @r.EndDate.ToString("MMM d, yyyy")
+                                        </td>
+                                        <td style="font-size:.85rem; color:var(--text-muted);">
+                                            @if (daysAgo == 0)
+                                            {
+                                                <span>Today</span>
+                                            }
+                                            else if (daysAgo == 1)
+                                            {
+
+                                                <span>1 day ago</span>
+                                            }
+                                            else
+                                            {
+
+                                                <span>@daysAgo days ago</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <strong>@r.NumberOfDays</strong>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-1">
+                                                <form asp-controller="LeaveRequest" asp-action="Approve" method="post" style="display:inline;">
+                                                    <input type="hidden" name="id" value="@r.LeaveRequestId" />
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Approve" onclick="return confirm('Approve this request?');">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form asp-controller="LeaveRequest" asp-action="Reject" method="post" style="display:inline;">
+                                                    <input type="hidden" name="id" value="@r.LeaveRequestId" />
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Reject" onclick="return confirm('Reject this request?');">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                                <a asp-controller="LeaveRequest" asp-action="Details" asp-route-id="@r.LeaveRequestId"
+                                                   class="btn btn-sm btn-outline-primary" title="Review details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Analytics & Activity -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body" style="padding: 1rem;">
+                <div class="quick-actions" style="grid-template-columns: 1fr 1fr; gap: .5rem;">
+                    <a asp-controller="Employee" asp-action="Index" class="quick-action" style="padding: .75rem; flex-direction: column; align-items: center; text-align: center; gap: .5rem;">
+                        <i class="fas fa-users" style="margin:0;"></i>
+                        <span class="label" style="font-size: .8rem;">Employees</span>
+                    </a>
+                    <a asp-controller="Department" asp-action="Index" class="quick-action" style="padding: .75rem; flex-direction: column; align-items: center; text-align: center; gap: .5rem;">
+                        <i class="fas fa-sitemap" style="margin:0;"></i>
+                        <span class="label" style="font-size: .8rem;">Depts</span>
+                    </a>
+                    <a asp-controller="LeaveRequest" asp-action="Index" class="quick-action" style="padding: .75rem; flex-direction: column; align-items: center; text-align: center; gap: .5rem;">
+                        <i class="fas fa-file-invoice" style="margin:0;"></i>
+                        <span class="label" style="font-size: .8rem;">Requests</span>
+                    </a>
+                    <a asp-controller="LeaveRequest" asp-action="ExportAllRequests" target="_blank" class="quick-action" style="padding: .75rem; flex-direction: column; align-items: center; text-align: center; gap: .5rem;">
+                        <i class="fas fa-download" style="margin:0;"></i>
+                        <span class="label" style="font-size: .8rem;">Export CSV</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== WHO'S AWAY ========== -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-users-slash"></i> Who's Away Today?</h5>
+            </div>
+            <div class="card-body" style="padding: 1rem;">
+                @if (!Model.CompanyLeavesOnToday.Any())
+                {
+                    <p class="text-muted" style="font-size: .88rem; margin: 0;"><i class="fas fa-check-circle text-success"></i> All staff are present today.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0" style="font-size: .88rem;">
+                        @foreach(var leave in Model.CompanyLeavesOnToday.Take(10))
+                        {
+                            <li style="margin-bottom: .5rem; display: flex; align-items: center; gap: .5rem;">
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                    @leave.Employee?.FullName?.Substring(0,1)
+                                </div>
+                                <div>
+                                    <strong style="display: block;">@leave.Employee?.FullName</strong>
+                                    <span class="text-muted" style="font-size: .75rem;">@leave.Employee?.Department?.DepartmentName | Back on @leave.EndDate.AddDays(1).ToShortDateString()</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+
+
+    </div>
+</div>
+
+<!-- ============ RECENT APPLICATIONS MODAL ============ -->
+<div class="modal fade" id="recentAppsModal" tabindex="-1" aria-labelledby="recentAppsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+            <div class="modal-header" style="background: var(--primary-soft); border-bottom: 1px solid rgba(0,0,0,0.05);">
+                <h5 class="modal-title" id="recentAppsModalLabel" style="color: var(--primary-ink); font-weight: 600;">
+                    <i class="fas fa-calendar-week me-2"></i> Applications in Last 7 Days
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                @if (!Model.RecentApplications.Any())
+                {
+                    <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                        <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.2;"></i>
+                        <h5>No Applications</h5>
+                        <p>There have been no leave applications in the last 7 days.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" style="font-size: 0.9rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="padding-left: 1.5rem;">Employee</th>
+                                    <th>Leave Type</th>
+                                    <th>Applied On</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var app in Model.RecentApplications.OrderByDescending(a => a.AppliedDate))
+                                {
+                                    var appStatusClass = app.Status == "Approved" ? "success" : (app.Status == "Rejected" ? "danger" : "warning");
+                                    var appStatusIcon = app.Status == "Approved" ? "fa-check" : (app.Status == "Rejected" ? "fa-xmark" : "fa-hourglass-half");
+
+                                    <tr>
+                                        <td style="padding-left: 1.5rem;">
+                                            <strong>@app.Employee?.FullName</strong>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted);">@app.Employee?.Department?.DepartmentName</div>
+                                        </td>
+                                        <td>@app.LeaveType?.Name <span class="badge bg-light text-dark ms-1">@app.NumberOfDays day(s)</span></td>
+                                        <td>@app.AppliedDate.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <span class="badge bg-@appStatusClass bg-opacity-10 text-@appStatusClass border border-@appStatusClass border-opacity-25 rounded-pill px-2 py-1">
+                                                <i class="fas @appStatusIcon me-1"></i> @app.Status
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(0,0,0,0.05); background: #f8fafc;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Trend Chart
+            const trendCtx = document.getElementById('leaveTrendChart').getContext('2d');
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['6d ago', '5d ago', '4d ago', '3d ago', '2d ago', '1d ago', 'Today'],
+                    datasets: [{
+                        label: 'Applications',
+                        data: [@string.Join(",", trend)],
+                        borderColor: '#2563eb', // primary
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const tooltips = [@Html.Raw(string.Join(",", tooltipArrays))];
+                                    return tooltips[context.dataIndex];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, suggestedMax: @trendMax, border: { dash: [4, 4] } }
+                    }
+                }
+            });
+
+
+        });
+    </script>
+}

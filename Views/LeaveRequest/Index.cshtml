@@ -1,0 +1,89 @@
+@model List<LeaveRequest>
+@{
+    ViewData["Title"] = "Leave Requests";
+    var isAdmin = User.IsInRole("Admin");
+}
+
+<div class="page-header-row">
+    <div>
+        <h1>@(isAdmin ? "All Leave Requests" : "My Leave Requests")</h1>
+        <p class="subtitle">@(isAdmin ? "Review and manage all employee leave requests." : "Track your leave applications and their status.")</p>
+    </div>
+    @if (!isAdmin)
+    {
+        <a asp-action="Apply" class="btn btn-primary" onclick="openApplyModal(event, this.href)">
+            <i class="fas fa-plus-circle"></i> Apply for Leave
+        </a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <h5>No requests found</h5>
+                <p>@(isAdmin ? "There are no leave requests yet." : "You haven't applied for any leave yet.")</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            @if (isAdmin) { <th>Employee</th> }
+                            <th>Leave Type</th>
+                            <th>Dates</th>
+                            <th>Days</th>
+                            <th>Status</th>
+                            <th>Applied</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model)
+                        {
+                            <tr>
+                                @if (isAdmin) { <td><strong>@r.Employee?.FullName</strong></td> }
+                                <td>@r.LeaveType?.Name</td>
+                                <td>@r.StartDate.ToShortDateString() &mdash; @r.EndDate.ToShortDateString()</td>
+                                <td><span class="badge bg-light">@r.NumberOfDays days</span></td>
+                                <td>
+                                    @if (r.Status == "Approved")
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check"></i> Approved</span>
+                                    }
+                                    else if (r.Status == "Rejected")
+                                    {
+                                        <span class="badge bg-danger"><i class="fas fa-xmark"></i> Rejected</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                    }
+                                </td>
+                                <td>@r.AppliedDate.ToShortDateString()</td>
+                                <td class="text-end">
+                                    <a asp-action="Details" asp-route-id="@r.LeaveRequestId" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    @if (!isAdmin && r.Status == "Pending")
+                                    {
+                                        <form asp-action="Cancel" asp-route-id="@r.LeaveRequestId" method="post" class="d-inline"
+                                              onsubmit="return confirm('Cancel this leave request?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-xmark"></i> Cancel
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,68 @@
+@model LeaveRequestApplyViewModel
+@{
+    ViewData["Title"] = "Apply for Leave";
+}
+
+<div class="page-header">
+    <h1>Apply for Leave</h1>
+    <p class="subtitle">Submit a new leave request — your balance will be checked automatically.</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="form-section">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="display:@(ViewData.ModelState.IsValid ? "none" : "flex")"></div>
+            <form asp-action="Apply" method="post">
+                <div class="mb-3">
+                    <label asp-for="LeaveTypeId" class="form-label"></label>
+                    <select asp-for="LeaveTypeId" class="form-select" asp-items="Model.LeaveTypeOptions" id="leaveTypeSelect">
+                        <option value="">-- Select Leave Type --</option>
+                    </select>
+                    <span asp-validation-for="LeaveTypeId" class="text-danger"></span>
+                    <div class="form-text" id="remainingDaysHint"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="StartDate" class="form-label"></label>
+                        <input asp-for="StartDate" class="form-control" type="date" />
+                        <span asp-validation-for="StartDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="EndDate" class="form-label"></label>
+                        <input asp-for="EndDate" class="form-control" type="date" />
+                        <span asp-validation-for="EndDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Reason" class="form-label"></label>
+                    <textarea asp-for="Reason" class="form-control" rows="4" placeholder="Briefly explain the reason for your leave..."></textarea>
+                    <span asp-validation-for="Reason" class="text-danger"></span>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Request</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const remainingDays = @Html.Raw(Json.Serialize(Model.RemainingDaysByLeaveType));
+        const select = document.getElementById('leaveTypeSelect');
+        const hint = document.getElementById('remainingDaysHint');
+
+        function updateHint() {
+            const days = remainingDays[select.value];
+            if (days !== undefined) {
+                hint.innerHTML = '<i class="fas fa-circle-info"></i> You have <strong>' + days + ' day(s)</strong> remaining for this leave type this year.';
+            } else {
+                hint.textContent = '';
+            }
+        }
+        select.addEventListener('change', updateHint);
+        updateHint();
+    </script>
+}

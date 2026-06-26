@@ -1,0 +1,31 @@
+@model Employee
+@{
+    ViewData["Title"] = "Employee Details";
+}
+
+<div class="page-header-row">
+    <div>
+        <h1>@Model.FullName</h1>
+        <p class="subtitle"><i class="fas fa-briefcase"></i> @Model.Designation · @Model.Department?.DepartmentName</p>
+    </div>
+    <div style="display:flex; gap:.5rem;">
+        <a asp-action="Edit" asp-route-id="@Model.EmployeeId" class="btn btn-outline-secondary"><i class="fas fa-pen"></i> Edit</a>
+        <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="detail-list">
+                    <div class="detail-row"><dt>Full Name</dt><dd>@Model.FullName</dd></div>
+                    <div class="detail-row"><dt>Email</dt><dd><a href="mailto:@Model.Email">@Model.Email</a></dd></div>
+                    <div class="detail-row"><dt>Department</dt><dd>@Model.Department?.DepartmentName</dd></div>
+                    <div class="detail-row"><dt>Designation</dt><dd>@Model.Designation</dd></div>
+                    <div class="detail-row"><dt>Date of Joining</dt><dd>@Model.DateOfJoining.ToLongDateString()</dd></div>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

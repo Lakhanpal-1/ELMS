@@ -1,0 +1,92 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="auth-shell">
+    <aside class="auth-side">
+        <div class="auth-side-inner">
+            <a href="@Url.Action("Index","Home")" class="brand">
+                <i class="fas fa-calendar-check"></i> ELMS
+            </a>
+            <h2>Join your team on ELMS.</h2>
+            <p>Create your employee account in seconds — your HR team will see your profile straight away.</p>
+            <ul class="features">
+                <li><i class="fas fa-check"></i> Personal leave dashboard</li>
+                <li><i class="fas fa-check"></i> Apply, track and cancel in one place</li>
+                <li><i class="fas fa-check"></i> Get notified on every decision</li>
+            </ul>
+        </div>
+        <div class="meta">&copy; @DateTime.Now.Year ELMS</div>
+    </aside>
+
+    <section class="auth-main">
+        <div class="auth-card" style="max-width: 560px;">
+            <div class="auth-brand-mobile"><i class="fas fa-calendar-check"></i> ELMS</div>
+            <h2>Create your account</h2>
+            <p class="auth-sub">Fill in your details to register as an employee.</p>
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="display:@(ViewData.ModelState.IsValid ? "none" : "flex")"></div>
+
+            <form asp-action="Register" method="post" novalidate>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="FullName" class="form-label">Full name</label>
+                        <input asp-for="FullName" class="form-control" placeholder="Jane Doe" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Email" class="form-label">Work email</label>
+                        <input asp-for="Email" class="form-control" autocomplete="username" placeholder="jane@company.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Password" class="form-label">Password</label>
+                        <input asp-for="Password" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="ConfirmPassword" class="form-label">Confirm password</label>
+                        <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Designation" class="form-label">Designation</label>
+                        <input asp-for="Designation" class="form-control" placeholder="e.g. Software Engineer" />
+                        <span asp-validation-for="Designation" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="DepartmentId" class="form-label">Department</label>
+                        <select asp-for="DepartmentId" class="form-select"
+                                asp-items="@(new SelectList(Model.Departments, "DepartmentId", "DepartmentName"))">
+                            <option value="">-- Select Department --</option>
+                        </select>
+                        <span asp-validation-for="DepartmentId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label asp-for="DateOfJoining" class="form-label">Date of joining</label>
+                    <input asp-for="DateOfJoining" class="form-control" type="date" />
+                    <span asp-validation-for="DateOfJoining" class="text-danger"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">
+                    <i class="fas fa-user-plus"></i> Create account
+                </button>
+            </form>
+
+            <p class="mt-3 text-muted" style="text-align:center;">
+                Already have an account?
+                <a asp-controller="Account" asp-action="Login">Sign in</a>
+            </p>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

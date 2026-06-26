@@ -1,0 +1,65 @@
+@model EmployeeLeaveManagementSystem.Models.ViewModels.LeaveRequestApplyViewModel
+
+<form asp-action="Apply" asp-controller="LeaveRequest" method="post" id="applyLeaveForm" onsubmit="submitApplyForm(event)">
+    <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-calendar-plus"></i> Apply for Leave</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="display:@(ViewData.ModelState.IsValid ? "none" : "flex")"></div>
+        
+        <div class="mb-3">
+            <label asp-for="LeaveTypeId" class="form-label"></label>
+            <select asp-for="LeaveTypeId" class="form-select" asp-items="Model.LeaveTypeOptions" id="leaveTypeSelect">
+                <option value="">-- Select Leave Type --</option>
+            </select>
+            <span asp-validation-for="LeaveTypeId" class="text-danger"></span>
+            <div class="form-text mt-1" id="remainingDaysHint"></div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="StartDate" class="form-label"></label>
+                <input asp-for="StartDate" class="form-control" type="date" />
+                <span asp-validation-for="StartDate" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="EndDate" class="form-label"></label>
+                <input asp-for="EndDate" class="form-control" type="date" />
+                <span asp-validation-for="EndDate" class="text-danger"></span>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label asp-for="Reason" class="form-label"></label>
+            <textarea asp-for="Reason" class="form-control" rows="3" placeholder="Briefly explain the reason for your leave..."></textarea>
+            <span asp-validation-for="Reason" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Request</button>
+    </div>
+</form>
+
+<script>
+    (function() {
+        const remainingDays = @Html.Raw(Json.Serialize(Model.RemainingDaysByLeaveType));
+        const select = document.getElementById('leaveTypeSelect');
+        const hint = document.getElementById('remainingDaysHint');
+
+        function updateHint() {
+            if(!select || !hint) return;
+            const days = remainingDays[select.value];
+            if (days !== undefined) {
+                hint.innerHTML = '<i class="fas fa-circle-info"></i> You have <strong>' + days + ' day(s)</strong> remaining for this leave type this year.';
+            } else {
+                hint.innerHTML = '';
+            }
+        }
+        if(select) {
+            select.addEventListener('change', updateHint);
+            updateHint();
+        }
+    })();
+</script>

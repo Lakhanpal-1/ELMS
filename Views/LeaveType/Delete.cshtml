@@ -1,0 +1,26 @@
+@model LeaveType
+@{
+    ViewData["Title"] = "Delete Leave Type";
+}
+
+<div class="page-header">
+    <h1 style="color: var(--danger);">Delete Leave Type</h1>
+    <p class="subtitle">This action cannot be undone.</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <p>Are you sure you want to delete <strong>@Model.Name</strong> (@Model.DefaultDaysPerYear days/year)?</p>
+                <form asp-action="Delete" method="post">
+                    <input type="hidden" asp-for="LeaveTypeId" />
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

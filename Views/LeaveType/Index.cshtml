@@ -1,0 +1,54 @@
+@model List<LeaveType>
+@{
+    ViewData["Title"] = "Leave Types";
+}
+
+<div class="page-header-row">
+    <div>
+        <h1>Leave Types</h1>
+        <p class="subtitle">Configure leave categories and default yearly allowances.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> New Leave Type
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-tags"></i></div>
+                <h5>No leave types yet</h5>
+                <p><a asp-action="Create">Create your first leave type</a> (e.g. Annual, Sick, Casual).</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Default Days / Year</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr>
+                                <td><strong>@t.Name</strong></td>
+                                <td><span class="badge bg-light"><i class="fas fa-calendar"></i> @t.DefaultDaysPerYear days</span></td>
+                                <td class="text-end">
+                                    <a asp-action="Edit" asp-route-id="@t.LeaveTypeId" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
+                                    <a asp-action="Delete" asp-route-id="@t.LeaveTypeId" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

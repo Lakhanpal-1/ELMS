@@ -1,0 +1,61 @@
+@model List<Employee>
+@{
+    ViewData["Title"] = "Employees";
+}
+
+<div class="page-header-row">
+    <div>
+        <h1>Employees</h1>
+        <p class="subtitle">Manage your workforce and employee information.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> Add Employee
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-users"></i></div>
+                <h5>No employees yet</h5>
+                <p><a asp-action="Create">Create the first employee</a> to get started.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Designation</th>
+                            <th>Joined</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in Model)
+                        {
+                            <tr>
+                                <td><strong>@e.FullName</strong></td>
+                                <td><a href="mailto:@e.Email">@e.Email</a></td>
+                                <td>@e.Department?.DepartmentName</td>
+                                <td>@e.Designation</td>
+                                <td>@e.DateOfJoining.ToShortDateString()</td>
+                                <td class="text-end">
+                                    <a asp-action="Details" asp-route-id="@e.EmployeeId" class="btn btn-sm btn-outline-secondary" title="View"><i class="fas fa-eye"></i></a>
+                                    <a asp-action="Edit" asp-route-id="@e.EmployeeId" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+                                    <a asp-action="Delete" asp-route-id="@e.EmployeeId" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

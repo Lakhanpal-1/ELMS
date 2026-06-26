@@ -1,0 +1,129 @@
+@model LeaveRequest
+@{
+    ViewData["Title"] = "Leave Request Details";
+    var isAdmin = User.IsInRole("Admin");
+    var statusClass = Model.Status == "Approved" ? "bg-success"
+                    : Model.Status == "Rejected" ? "bg-danger"
+                    : "bg-warning";
+    var statusIcon = Model.Status == "Approved" ? "fa-check"
+                    : Model.Status == "Rejected" ? "fa-xmark"
+                    : "fa-hourglass-half";
+}
+
+<div class="page-header-row mb-4" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+    <div>
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Leave Details <span class="text-muted" style="font-weight:400; font-size:1.1rem;">— @Model.LeaveType?.Name</span></h1>
+        <p class="subtitle" style="margin:0;">
+            <span class="badge @statusClass" style="font-size: 0.8rem; padding: 0.4em 0.6em;"><i class="fas @statusIcon"></i> @Model.Status</span>
+            <span class="text-muted ms-2" style="font-size: 0.85rem;">Applied on @Model.AppliedDate.ToShortDateString()</span>
+        </p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm" style="border:none; border-radius:12px;">
+            <div class="card-header bg-white" style="border-bottom: 1px solid var(--border-color); padding: 1.25rem;">
+                <h5 style="margin:0; font-size:1.1rem; color:var(--text-color);"><i class="fas fa-file-lines text-primary me-2"></i> Request Information</h5>
+            </div>
+            <div class="card-body" style="padding: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
+                    
+                    @if (isAdmin)
+                    {
+                        <div style="background: var(--bg-soft); padding: 1rem; border-radius: 8px;">
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Employee</small>
+                            <div style="font-weight:600; font-size:1rem;">@Model.Employee?.FullName</div>
+                            <div style="font-size:0.85rem; color:var(--text-muted);">@Model.Employee?.Department?.DepartmentName</div>
+                        </div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Leave Type</small>
+                            <div style="font-weight:500;">@Model.LeaveType?.Name</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Duration</small>
+                            <div style="font-weight:500;">
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 me-1">@Model.NumberOfDays day(s)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Date Range</small>
+                        <div style="font-weight:500; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="far fa-calendar-alt text-muted"></i> @Model.StartDate.ToString("MMM dd, yyyy") 
+                            <i class="fas fa-arrow-right text-muted" style="font-size:0.8rem;"></i> 
+                            <i class="far fa-calendar-alt text-muted"></i> @Model.EndDate.ToString("MMM dd, yyyy")
+                        </div>
+                    </div>
+
+                    <div>
+                        <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Reason for Leave</small>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px; font-size: 0.95rem; color: #334155;">
+                            @(string.IsNullOrWhiteSpace(Model.Reason) ? "No reason provided." : Model.Reason)
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        @if (isAdmin && Model.Status == "Pending")
+        {
+            <div class="card shadow-sm border-warning mb-4" style="border-radius:12px; overflow:hidden;">
+                <div class="card-header bg-warning bg-opacity-10 border-warning border-opacity-25" style="padding: 1.25rem;">
+                    <h5 style="margin: 0; font-size: 1.1rem; color: #b45309;"><i class="fas fa-gavel me-2"></i> Manager Decision</h5>
+                </div>
+                <div class="card-body" style="padding: 1.5rem;">
+                    <form asp-controller="LeaveRequest" asp-action="Approve" method="post">
+                        <input type="hidden" name="id" value="@Model.LeaveRequestId" />
+                        <div class="mb-4">
+                            <label class="form-label" style="font-weight:500; font-size:0.9rem;">Remarks / Notes (Optional)</label>
+                            <textarea name="remarks" class="form-control" rows="3" placeholder="Add any notes about your decision..." style="resize:none; border-radius:8px;"></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success flex-grow-1" style="font-weight:500; padding:0.6rem;"><i class="fas fa-check-circle me-1"></i> Approve</button>
+                            <button type="submit" formaction="@Url.Action("Reject", "LeaveRequest")" class="btn btn-danger flex-grow-1" style="font-weight:500; padding:0.6rem;"><i class="fas fa-times-circle me-1"></i> Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (Model.Status != "Pending")
+        {
+            <div class="card shadow-sm" style="border:none; border-radius:12px;">
+                <div class="card-header bg-white" style="border-bottom: 1px solid var(--border-color); padding: 1.25rem;">
+                    <h5 style="margin:0; font-size:1.1rem; color:var(--text-color);"><i class="fas fa-clipboard-check text-success me-2"></i> Decision Details</h5>
+                </div>
+                <div class="card-body" style="padding: 1.5rem;">
+                    <div style="display: grid; gap: 1.25rem;">
+                        <div>
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Reviewed By</small>
+                            <div style="font-weight:500; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-user-shield text-muted"></i> @Model.ApprovedBy?.FullName
+                            </div>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Reviewed On</small>
+                            <div style="font-weight:500; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="far fa-clock text-muted"></i> @Model.ApprovedDate?.ToString("MMMM dd, yyyy - hh:mm tt")
+                            </div>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block text-uppercase" style="font-weight:600; font-size:0.75rem; letter-spacing:0.5px; margin-bottom:0.25rem;">Manager Remarks</small>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px; font-size: 0.95rem; font-style: italic; color: #475569;">
+                                @(string.IsNullOrWhiteSpace(Model.Remarks) ? "No remarks provided." : Model.Remarks)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

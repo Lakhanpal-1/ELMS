@@ -1,0 +1,52 @@
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <ul class="navbar-nav d-flex flex-row align-items-center gap-3">
+        <li class="nav-item">
+            <a href="#" class="nav-link position-relative text-muted" style="font-size: 1.15rem;">
+                <i class="far fa-bell"></i>
+                <span class="position-absolute top-25 start-75 translate-middle p-1 bg-danger border border-light rounded-circle" style="width: 8px; height: 8px;">
+                    <span class="visually-hidden">New alerts</span>
+                </span>
+            </a>
+        </li>
+        <div style="width: 1px; height: 24px; background: #e2e8f0; margin: 0 0.25rem;"></div>
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="color: #334155; font-weight: 500; text-decoration: none;">
+                <div style="width: 35px; height: 35px; background: var(--primary-soft); color: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1rem;">
+                    @((User.Identity.Name?.FirstOrDefault().ToString() ?? "U").ToUpper())
+                </div>
+                <div class="d-none d-sm-block text-start" style="line-height: 1.2;">
+                    <div style="font-size: 0.9rem;">@(User.Identity.Name?.Split('@')[0] ?? "User")</div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 400;">@(User.IsInRole("Admin") ? "Administrator" : "Employee")</div>
+                </div>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border: none; border-radius: 8px; margin-top: 0.75rem; min-width: 200px;">
+                <li><h6 class="dropdown-header">Account Management</h6></li>
+                <li><a class="dropdown-item py-2" asp-controller="Account" asp-action="Settings"><i class="fas fa-cog me-2 text-muted"></i> Settings</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                        <button type="submit" class="dropdown-item py-2 text-danger" style="font-weight: 500;">
+                            <i class="fas fa-sign-out-alt me-2"></i> Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    </ul>
+}
+else
+{
+    <ul class="navbar-nav">
+        <li>
+            <a class="btn btn-outline-secondary btn-sm" asp-controller="Account" asp-action="Login">
+                <i class="fas fa-arrow-right-to-bracket"></i><span>Login</span>
+            </a>
+        </li>
+        <li>
+            <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Register">
+                <i class="fas fa-user-plus"></i><span>Register</span>
+            </a>
+        </li>
+    </ul>
+}

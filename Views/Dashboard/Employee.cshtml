@@ -1,0 +1,373 @@
+@model EmployeeDashboardViewModel?
+@{
+    ViewData["Title"] = "My Dashboard";
+    var today = DateTime.Now;
+    var endOfYear = new DateTime(today.Year, 12, 31);
+    var daysRemainingThisYear = (endOfYear - today).Days;
+}
+
+@if (Model == null)
+{
+    <div class="alert alert-warning">
+        <i class="fas fa-triangle-exclamation"></i>
+        <span>No employee profile linked to your account. Please contact HR to set up your profile.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    return;
+}
+
+<!-- ========== PAGE HEADER ========== -->
+<div class="page-header-row">
+    <div>
+        <h1>Welcome, @Model.Employee.FullName</h1>
+        <p class="subtitle">
+            <i class="fas fa-briefcase"></i> @Model.Employee.Designation
+            @if (Model.Employee.Department != null)
+            {
+                <span> · @Model.Employee.Department.DepartmentName</span>
+            }
+        </p>
+    </div>
+    <a asp-controller="LeaveRequest" asp-action="Apply" class="btn btn-primary btn-lg" onclick="openApplyModal(event, this.href)">
+        <i class="fas fa-plus-circle"></i> Apply for Leave
+    </a>
+</div>
+
+<!-- ========== AT-A-GLANCE METRICS ========== -->
+@if (Model.Balances.Any())
+{
+    var totalBalance = Model.Balances.Sum(b => b.RemainingDays);
+    var totalUsed = Model.Balances.Sum(b => b.UsedDays);
+    var totalAllotted = Model.Balances.Sum(b => b.TotalDays);
+    var utilizationPct = totalAllotted == 0 ? 0 : (int)Math.Round(100.0 * totalUsed / totalAllotted);
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6 col-lg-3">
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--success-soft), #bbf7d0); color: var(--success);">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="dashboard-card-content flex-grow-1">
+                    <h6>Days Remaining</h6>
+                    <p>@totalBalance</p>
+                    <span class="stat-trend up"><i class="fas fa-leaf"></i> Available</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--info-soft), #dbeafe); color: var(--info);">
+                    <i class="fas fa-tally"></i>
+                </div>
+                <div class="dashboard-card-content flex-grow-1">
+                    <h6>Days Used</h6>
+                    <p>@totalUsed</p>
+                    <span class="stat-trend flat"><i class="fas fa-check"></i> This year</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--warning-soft), #fed7aa); color: var(--warning);">
+                    <i class="fas fa-percent"></i>
+                </div>
+                <div class="dashboard-card-content flex-grow-1">
+                    <h6>Utilization</h6>
+                    <p>@utilizationPct%</p>
+                    <span class="stat-trend @(utilizationPct > 70 ? "up" : "flat")"><i class="fas fa-chart-pie"></i> Usage rate</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon" style="background: linear-gradient(135deg, var(--purple-soft), #e9d5ff); color: var(--purple);">
+                    <i class="fas fa-calendar-days"></i>
+                </div>
+                <div class="dashboard-card-content flex-grow-1">
+                    <h6>Year Ends In</h6>
+                    <p>@daysRemainingThisYear</p>
+                    <span class="stat-trend flat"><i class="fas fa-hourglass-end"></i> days</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ========== MAIN CONTENT GRID ========== -->
+<div class="row g-3 mb-3">
+    <!-- LEFT COLUMN -->
+    <div class="col-lg-8">
+        <!-- ========== LEAVE BALANCE CARDS ========== -->
+        <div class="mb-4">
+    <h3 style="margin-bottom: 1rem; font-size: 1.05rem; display:flex; align-items:center; gap:.5rem;">
+        <i class="fas fa-calendar-alt"></i> Leave Balance — @DateTime.Now.Year
+    </h3>
+
+    @if (!Model.Balances.Any())
+    {
+        <div class="alert alert-info">
+            <i class="fas fa-circle-info"></i>
+            <span>Your leave balance records will appear here once HR configures them.</span>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var b in Model.Balances.OrderByDescending(x => x.RemainingDays))
+            {
+                var pct = b.TotalDays == 0 ? 0 : (int)Math.Round(100.0 * b.RemainingDays / b.TotalDays);
+                var statusClass = pct > 50 ? "success" : (pct > 25 ? "warning" : "danger");
+
+                <div class="col-md-6">
+                    <div class="card balance-card">
+                        <h5 class="card-title">
+                            <span class="dot"></span> @b.LeaveType?.Name
+                            <span class="badge bg-@statusClass" style="margin-left:auto; font-size:.65rem;">
+                                @pct% remaining
+                            </span>
+                        </h5>
+
+                        <div style="margin-bottom:.75rem;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:.4rem;">
+                                <span style="font-size:.82rem; color:var(--text-muted);">Allocation</span>
+                                <strong style="font-feature-settings: 'tnum' 1;">@b.RemainingDays / @b.TotalDays days</strong>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: @pct%; background: linear-gradient(90deg, @(pct > 50 ? "var(--success)" : (pct > 25 ? "var(--warning)" : "var(--danger)")), @(pct > 50 ? "#059669" : (pct > 25 ? "#d97706" : "#dc2626")));"
+                                     aria-valuenow="@b.RemainingDays" aria-valuemin="0" aria-valuemax="@b.TotalDays"></div>
+                            </div>
+                        </div>
+
+                        <div class="balance-stats">
+                            <div class="balance-stat">
+                                <div class="num" style="color:var(--danger);">@b.UsedDays</div>
+                                <div class="lbl">Used</div>
+                            </div>
+                            <div class="balance-stat">
+                                <div class="num" style="color:var(--success);">@b.RemainingDays</div>
+                                <div class="lbl">Remaining</div>
+                            </div>
+                        </div>
+
+                        @if (pct < 20)
+                        {
+                            <div style="margin-top:.75rem; padding:.65rem; background:var(--danger-soft); border-radius:8px; border:1px solid rgba(239,68,68,.15);">
+                                <p style="margin:0; font-size:.78rem; color:var(--danger-ink); font-weight:600;">
+                                    <i class="fas fa-exclamation-circle"></i> Running low on balance
+                                </p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- ========== RECENT REQUESTS TABLE ========== -->
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-history"></i> Recent Leave Requests</h5>
+            <a asp-controller="LeaveRequest" asp-action="Index" class="btn btn-sm btn-outline-primary">
+                View All <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        @if (!Model.RecentRequests.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <h5>No Leave Requests Yet</h5>
+                <p>You haven't applied for any leave. <a asp-controller="LeaveRequest" asp-action="Apply">Apply now</a></p>
+                <div class="empty-actions">
+                    <a asp-controller="LeaveRequest" asp-action="Apply" class="btn btn-sm btn-primary" onclick="openApplyModal(event, this.href)">
+                        <i class="fas fa-plus-circle"></i> Create Request
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Duration</th>
+                            <th>Days</th>
+                            <th>Status</th>
+                            <th>Applied</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.RecentRequests.OrderByDescending(x => x.AppliedDate).Take(10))
+                        {
+                            var statusBadgeClass = r.Status == "Approved" ? "success"
+                                : (r.Status == "Rejected" ? "danger" : "warning");
+                            var statusIcon = r.Status == "Approved" ? "fa-check-circle"
+                                : (r.Status == "Rejected" ? "fa-times-circle" : "fa-hourglass-half");
+
+                            <tr>
+                                <td>
+                                    <strong>@r.LeaveType?.Name</strong>
+                                </td>
+                                <td style="font-size:.88rem;">
+                                    @r.StartDate.ToString("MMM d") — @r.EndDate.ToString("MMM d, yyyy")
+                                </td>
+                                <td>
+                                    <span class="badge bg-light">@r.NumberOfDays day@(r.NumberOfDays == 1 ? "" : "s")</span>
+                                </td>
+                                <td>
+                                    @if (r.Status == "Approved")
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check"></i> Approved</span>
+                                    }
+                                    else if (r.Status == "Rejected")
+                                    {
+                                        <span class="badge bg-danger"><i class="fas fa-xmark"></i> Rejected</span>
+                                    }
+                                    else if (r.Status == "Pending")
+                                    {
+                                        <span class="badge bg-warning"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light">@r.Status</span>
+                                    }
+                                </td>
+                                <td style="font-size:.85rem; color:var(--text-muted);">
+                                    @r.AppliedDate.ToString("MMM d, yyyy")
+                                </td>
+                                <td class="text-end">
+                                    <a asp-controller="LeaveRequest" asp-action="Details" asp-route-id="@r.LeaveRequestId"
+                                       class="btn btn-sm btn-outline-secondary" title="View details">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-lg-4">
+        <!-- ========== LEAVE UTILIZATION CHART ========== -->
+        @if (Model.Balances.Any())
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Utilization Breakdown</h5>
+                </div>
+                <div class="card-body" style="height: 250px; padding: 1rem;">
+                    <canvas id="leaveUtilizationChart"></canvas>
+                </div>
+            </div>
+        }
+
+        <!-- ========== QUICK ACTIONS ========== -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body" style="padding: 1rem;">
+                <div class="quick-actions" style="grid-template-columns: 1fr; gap: .5rem;">
+                    <a asp-controller="LeaveRequest" asp-action="Apply" class="quick-action" style="padding: .75rem; flex-direction: row; gap: .75rem;" onclick="openApplyModal(event, this.href)">
+                        <i class="fas fa-plus"></i>
+                        <span class="label" style="font-size: .85rem;">New Request<span class="sub">Apply for leave</span></span>
+                    </a>
+                    <a asp-controller="LeaveRequest" asp-action="Index" class="quick-action" style="padding: .75rem; flex-direction: row; gap: .75rem;">
+                        <i class="fas fa-history"></i>
+                        <span class="label" style="font-size: .85rem;">My Requests<span class="sub">View history</span></span>
+                    </a>
+                    <a asp-controller="LeaveRequest" asp-action="ExportMyRequests" class="quick-action" style="padding: .75rem; flex-direction: row; gap: .75rem;" target="_blank">
+                        <i class="fas fa-download"></i>
+                        <span class="label" style="font-size: .85rem;">Download Report<span class="sub">Export to CSV</span></span>
+                    </a>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== HELPFUL TIPS ========== -->
+        <div class="card bg-primary text-white mb-3" style="border:none; background: linear-gradient(135deg, var(--primary), var(--primary-700));">
+            <div class="card-body">
+                <h6 style="color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; font-weight: 700; margin-bottom: .5rem;">
+                    <i class="fas fa-lightbulb"></i> Helpful tip
+                </h6>
+                <p style="margin:0; font-size: .88rem; color: rgba(255,255,255,0.85);">
+                    Plan your leave well in advance for better approval chances. Most requests are reviewed within 1-2 business days.
+                </p>
+            </div>
+        </div>
+        
+
+    </div>
+</div>
+
+@section Scripts {
+    @if (Model.Balances.Any())
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const ctx = document.getElementById('leaveUtilizationChart').getContext('2d');
+                
+                const labels = [
+                    @foreach (var b in Model.Balances) { @Html.Raw($"'{b.LeaveType?.Name}',") }
+                ];
+                
+                const usedData = [
+                    @foreach (var b in Model.Balances) { @Html.Raw($"{b.UsedDays},") }
+                ];
+
+                const remainingData = [
+                    @foreach (var b in Model.Balances) { @Html.Raw($"{b.RemainingDays},") }
+                ];
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Used Days',
+                                data: usedData,
+                                backgroundColor: '#f43f5e', // var(--danger)
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Remaining Days',
+                                data: remainingData,
+                                backgroundColor: '#10b981', // var(--success)
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { size: 11 } }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false } },
+                            y: { stacked: true, beginAtZero: true, border: { dash: [4, 4] } }
+                        }
+                    }
+                });
+            });
+        </script>
+    }
+}
